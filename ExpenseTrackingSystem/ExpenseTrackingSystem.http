@@ -1,0 +1,6 @@
+@ExpenseTrackingSystem_HostAddress = http://localhost:5262
+
+GET {{ExpenseTrackingSystem_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
