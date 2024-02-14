@@ -1,55 +1,66 @@
-using ExpenseTrackingSystem.Entities;
 using ExpenseTrackingSystem.Entities.Models;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.EntityFrameworkCore;
-using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
+using ExpenseTrackingSystem.Entities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Swashbuckle.AspNetCore.SwaggerGen;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Security.Claims;
+using System.Text;
+using ExpenseTrackingSystem.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using ExpenseTrackingSystem.Repositories;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add configuration
+
 builder.Configuration.AddJsonFile("appsettings.Development.json");
 
 builder.Services.AddDbContext<CustomContext>(options =>
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
                     new MySqlServerVersion(new Version(8, 0, 23))));
-builder.Services.ConfigureApplicationCookie(options =>
-{
-    options.LoginPath = "/auth/login"; 
-});
+
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-builder.Services.AddMvc();
+builder.Services.AddScoped<IExpenseService,ExpenseService>();
+builder.Services.AddScoped<IExpenseRepository,ExpenseRepository>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,  // Set to true to validate token lifetime
             ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtSettings["Issuer"],
-            ValidAudience = jwtSettings["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(s: jwtSettings["SecretKey"])),
+            ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 }
+        };
+
+     
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = context =>
+            {
+                
+                return Task.CompletedTask;
+            },
+            OnAuthenticationFailed = context =>
+            {
+                
+                Console.WriteLine(context.Exception);
+                return Task.CompletedTask;
+            }
         };
     });
 
+builder.Services.AddMvc();
+
 builder.Services.AddIdentity<CustomUser, CustomUserRole>(options =>
 {
-    // Configure identity options if needed
     options.Password.RequireDigit = true;
-    options.Password.RequireLowercase = true;
-    // ... other options
 })
 .AddEntityFrameworkStores<CustomContext>()
 .AddDefaultTokenProviders();
@@ -63,30 +74,22 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddControllers();
 
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+
+builder.Services.AddSwaggerGen(config =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Your API", Version = "v1" });
-
-
-    var securityScheme = new OpenApiSecurityScheme
+    config.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Description = "Enter 'Bearer {token}'",
-        Type = SecuritySchemeType.ApiKey,
+        Description = "Enter the Bearer Authorization string as following: `Bearer Generated-JWT-Token`",
         In = ParameterLocation.Header,
-        Scheme = "Bearer",
-        BearerFormat = "JWT"
-    };
-
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        In = ParameterLocation.Header,
-        Description = "Please enter JWT with Bearer into field",
-        Name = "Authorization",
         Type = SecuritySchemeType.ApiKey
     });
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+
+    config.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
@@ -95,13 +98,12 @@ builder.Services.AddSwaggerGen(c =>
                 {
                     Type = ReferenceType.SecurityScheme,
                     Id = "Bearer"
-                }
+                },
+                In = ParameterLocation.Header,
             },
-            new string[] {}
+           new string[] { }
         }
     });
-
-
 });
 
 var app = builder.Build();
@@ -111,10 +113,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Your API V1");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Expense Tracking System API V1");
 
-           c.OAuthClientId("swagger-ui");
+        c.OAuthClientId("swagger-ui");
         c.OAuthClientSecret("swagger-ui-secret");
+
+
+
+
+
         c.OAuthRealm("swagger-ui-realm");
         c.OAuthAppName("Swagger UI");
     });
@@ -127,44 +134,32 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.Map("/api-docs", builder =>
-{
-    builder.Run(async context =>
-    {
-        var user = context.User;
-
-        if (!user.Identity.IsAuthenticated)
-        {
-            context.Response.Redirect("/api/auth/login");
-            return;
-        }
-
-        if (user.IsInRole("SysAdmin"))
-        {
-            context.Response.Redirect("/api/Admin");
-        }
-        else if (user.IsInRole("Manager"))
-        {
-            context.Response.Redirect("/api/Manager");
-        }
-        else if (user.IsInRole("Employee"))
-        {
-            context.Response.Redirect("/api/Employee");
-        }
-        else
-        {
-            context.Response.StatusCode = 403;
-            await context.Response.WriteAsync("Forbidden");
-        }
-    });
-});
-
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllers();
 });
 
-// Initialize roles and perform other startup tasks
+app.Map("/api-docs", builder =>
+{
+    builder.Run(context =>
+    {
+        var user = context.User;
+
+        // Log user claims and roles
+        foreach (var claim in user.Claims)
+        {
+            Console.WriteLine($"Claim: {claim.Type} - {claim.Value}");
+        }
+
+        foreach (var role in user.FindAll(ClaimTypes.Role))
+        {
+            Console.WriteLine($"Role: {role.Value}");
+        }
+
+        return Task.CompletedTask;
+    });
+});
+
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -172,13 +167,13 @@ using (var scope = app.Services.CreateScope())
     var userManager = services.GetRequiredService<UserManager<CustomUser>>();
     var roleManager = services.GetRequiredService<RoleManager<CustomUserRole>>();
 
+ 
+
     try
     {
-
-        dbContext.Database.Migrate();
-
-        await RoleInitializer.InitializeAsync(userManager, roleManager);
        
+        dbContext.Database.Migrate();
+        await RoleInitializer.InitializeAsync(userManager, roleManager);
 
         app.Run();
     }

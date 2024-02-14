@@ -2,27 +2,32 @@
 using Microsoft.AspNetCore.Mvc;
 using ExpenseTrackingSystem.Entities.Models;
 using ExpenseTrackingSystem.Services;
+using Microsoft.AspNetCore.Identity;
 
 namespace ExpenseTrackingSystem.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Manager")]
+  //  [Authorize(Policy = "ManagerPolicy")]
+
     public class ManagerController : ControllerBase
     {
         private readonly IExpenseService _expenseService;
-
-        public ManagerController(IExpenseService expenseService)
+        private readonly UserManager<CustomUser> _userManager;
+        private readonly RoleManager<CustomUserRole> _roleManager;
+        public ManagerController(IExpenseService expenseService, UserManager<CustomUser> userManager, RoleManager<CustomUserRole> roleManager)
         {
             _expenseService = expenseService;
+            _userManager = userManager;
+            _roleManager = roleManager;
         }
 
         [HttpGet("expenses")]
         public IActionResult GetExpenses()
         {
-            // Get expenses for the manager's employees
-            // Replace with your actual logic to fetch expenses
-            var managerId = User.FindFirst("id")?.Value;
+
+            // var managerId = User.FindFirst("id")?.Value;
+            var managerId = "0ab5a82e-8204-499c-86aa-d41726427fe7";
             var expenses = _expenseService.GetExpensesForManager(managerId);
 
             return Ok(expenses);
@@ -31,9 +36,9 @@ namespace ExpenseTrackingSystem.Controllers
         [HttpPost("approveExpense/{expenseId}")]
         public IActionResult ApproveExpense(int expenseId)
         {
-            // Manager approves the expense
-            // Replace with your actual logic to approve the expense
-            var managerId = User.FindFirst("id")?.Value;
+
+            // var managerId = User.FindFirst("id")?.Value;
+            var managerId = "0ab5a82e-8204-499c-86aa-d41726427fe7";
             var result = _expenseService.ApproveExpense(expenseId,managerId);
 
             if (result.SuccessSituation.GetType == ServiceResult.Success)
@@ -45,8 +50,9 @@ namespace ExpenseTrackingSystem.Controllers
         [HttpPost("rejectExpense/{expenseId}")]
         public IActionResult RejectExpense(int expenseId, [FromBody] RejectionReasonDto rejectionReasonDto)
         {
-         
-            var managerId = User.FindFirst("id")?.Value;
+
+            // var managerId = User.FindFirst("id")?.Value;
+            var managerId = "0ab5a82e-8204-499c-86aa-d41726427fe7";
             var result = _expenseService.RejectExpense(expenseId, managerId, rejectionReasonDto.Reason);
 
             if (result.SuccessSituation.GetType == ServiceResult.Success)

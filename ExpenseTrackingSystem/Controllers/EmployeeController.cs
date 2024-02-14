@@ -2,27 +2,33 @@
 using Microsoft.AspNetCore.Mvc;
 using ExpenseTrackingSystem.Entities.Models;
 using ExpenseTrackingSystem.Services;
+using Microsoft.AspNetCore.Identity;
 
 namespace ExpenseTrackingSystem.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Employee")]
+    //[Authorize(Policy = "EmployeePolicy")]
     public class EmployeeController : ControllerBase
     {
         private readonly IExpenseService _expenseService;
+        private readonly UserManager<CustomUser> _userManager;
+        private readonly RoleManager<CustomUserRole> _roleManager;
 
-        public EmployeeController(IExpenseService expenseService)
+        public EmployeeController(IExpenseService expenseService, UserManager<CustomUser> userManager, RoleManager<CustomUserRole> roleManager)
         {
             _expenseService = expenseService;
+            _userManager = userManager;
+            _roleManager = roleManager;
         }
 
         [HttpGet("expenses")]
         public IActionResult GetExpenses()
         {
-            // Get expenses for the current employee
-            // Replace with your actual logic to fetch expenses
-            var employeeId = User.FindFirst("id")?.Value;
+
+
+            //          var employeeId = User.FindFirst("id")?.Value;
+            var employeeId = "2c08825a-02c2-4615-a4da-c4563b284d1f";
             var expenses = _expenseService.GetExpensesForEmployee(employeeId);
 
             return Ok(expenses);
@@ -31,9 +37,9 @@ namespace ExpenseTrackingSystem.Controllers
         [HttpPost("createExpense")]
         public IActionResult CreateExpense([FromBody] ExpenseCreateDto expenseCreateDto)
         {
-            // Employee creates a new expense
-            // Replace with your actual logic to create an expense
-            var employeeId = User.FindFirst("id")?.Value;
+
+            //          var employeeId = User.FindFirst("id")?.Value;
+            var employeeId = "2c08825a-02c2-4615-a4da-c4563b284d1f";
             var result = _expenseService.CreateExpense(employeeId, expenseCreateDto);
 
             if (result.SuccessSituation.GetType == ServiceResult.Success)
@@ -45,9 +51,8 @@ namespace ExpenseTrackingSystem.Controllers
         [HttpDelete("cancelExpense/{expenseId}")]
         public IActionResult CancelExpense(int expenseId)
         {
-            // Employee cancels their own expense
-            // Replace with your actual logic to cancel the expense
-            var employeeId = User.FindFirst("id")?.Value;
+            //          var employeeId = User.FindFirst("id")?.Value;
+            var employeeId = "2c08825a-02c2-4615-a4da-c4563b284d1f";
             var result = _expenseService.CancelExpense(employeeId, expenseId);
 
             if (result.SuccessSituation.GetType == ServiceResult.Success)

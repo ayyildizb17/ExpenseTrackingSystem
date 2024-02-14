@@ -5,8 +5,7 @@ using ExpenseTrackingSystem.Entities.Models;
 using Microsoft.AspNetCore.Authorization;
 
 [ApiController]
-[Route("api/[controller]")]
-//[Authorize(Roles = "SysAdmin")]
+[Route("api/Admin")]
 public class AdminController : ControllerBase
 {
     private readonly UserManager<CustomUser> _userManager;
@@ -19,8 +18,10 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("CreateManager")]
-    public async Task<IActionResult> CreateManager(string username, string password)
+   // [Authorize(Policy = "SysAdminPolicy")]
+    public async Task<IActionResult> CreateManager([FromQuery] string username, [FromQuery] string password)
     {
+       // _ = (User.FindFirst("id")?.Value);
         var role = await _roleManager.FindByNameAsync("Manager");
         var user = new Manager { UserName = username, Id = Guid.NewGuid().ToString(), RoleId = role.Id };
         var result = await _userManager.CreateAsync(user, password);

@@ -58,6 +58,7 @@ public class AuthController : ControllerBase
 
         foreach (var role in roles)
         {
+           
             claims.Add(new Claim(ClaimTypes.Role, role));
         }
 
@@ -65,10 +66,8 @@ public class AuthController : ControllerBase
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"],
-            audience: _configuration["Jwt:Audience"],
+
             claims: claims,
-            expires: DateTime.Now.AddDays(1),
             signingCredentials: credentials
         );
 
