@@ -1,6 +1,7 @@
 ﻿using ExpenseTrackingSystem.Controllers;
 using ExpenseTrackingSystem.Entities.Models;
 using ExpenseTrackingSystem.Repositories;
+using ExpenseTrackingSystem.Services.Model;
 
 namespace ExpenseTrackingSystem.Services
 {
